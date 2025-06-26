@@ -1,0 +1,12 @@
+"model","active_parameters","total_parameters"
+"claude_4_sonnet",200,200
+"deepseek_v3",37,671
+"gemini_2_0_flash",70,70
+"gpt_3_5_turbo",20,20
+"gpt_4_1",440,1800
+"gpt_4o",440,1800
+"gpt_o3",200,200
+"grok_3",2700,2700
+"llama_3_3",70,70
+"llama_4",17,400
+"deepseek_r1",37,671
