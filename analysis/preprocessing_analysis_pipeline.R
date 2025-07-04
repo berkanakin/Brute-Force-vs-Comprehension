@@ -10,7 +10,6 @@
 #       – valid     (logical copy of `valid_format`)
 #       – task_level, baseline, condition, log_size
 #  • Produces two analysis views (h1_data, h2_data) + example GLMM calls
-#  • Verbose comments explain every step.
 ###############################################################################
 
 setwd("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/data analysis/preliminary/analysis_data_long")
