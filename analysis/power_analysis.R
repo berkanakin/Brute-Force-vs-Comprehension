@@ -72,7 +72,7 @@ pow_current <- mixedpower(
 print(pow_current)
 
 ## ── 4  power grid: baselines 10–90 %, drops 5/7/10 pp ─────────────────────
-baselines <- seq(0.10, 0.80, by = 0.05)
+baselines <- seq(0.20, 0.80, by = 0.05)
 drops_pp  <- 10 # alternatively: c(5, 7, 10)
 
 grid_power <- expand.grid(b0 = baselines, drop = drops_pp) |>
@@ -94,8 +94,38 @@ grid_power <- expand.grid(b0 = baselines, drop = drops_pp) |>
 print(grid_power)
 
 
+#### With confidence intervals
 
+grid_power <- expand.grid(b0 = baselines, drop = drops_pp) |>
+  rowwise() |>
+  mutate(
+    # -- run one simulation per row ------------------------------------------
+    res = list({
+      pilot_g <- make_H2a(acc_lvl0 = b0,
+                          acc_lvl1 = b0 - drop / 100)
+      pilot_g$model_num <- as.numeric(pilot_g$model)
+      
+      fit_g <- glmer(accuracy ~ TaskLevel + (1 | model) + (1 | item),
+                     data = pilot_g, family = binomial,
+                     control = glmerControl(optimizer = "bobyqa",
+                                            optCtrl = list(maxfun = 2e5)))
+      
+      mixedpower(model = fit_g, data = pilot_g,
+                 fixed_effects  = "TaskLevel",
+                 simvar         = "model_num",
+                 steps          = 11,
+                 critical_value = 1.96,
+                 n_sim          = 1000)   # or 500 if you need it faster
+    }),
+    # -- extract point estimate and 95 % CI ----------------------------------
+    power = res$`11`[1],
+    lower = res$lower[1],
+    upper = res$upper[1]
+  ) |>
+  ungroup() |>
+  select(-res)            # drop helper column
 
+print(grid_power)
 
 
 

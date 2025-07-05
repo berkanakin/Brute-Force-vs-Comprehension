@@ -88,6 +88,51 @@ sum_tbl_ci <- df %>%
 ##
 
 
+## let me also add the control condition in the graph
+
+df_c <- data_long[data_long$condition_type=="control",]
+df_c <- df_c %>% 
+  mutate(model = dplyr::recode(model, !!!pretty_names, .default = model))
+
+control_summary <- df_c %>%
+  filter(condition_type == "control", valid == TRUE) %>%  # ← now only valid trials
+  group_by(model) %>%
+  summarise(
+    n = n(),                                # valid trials
+    k = sum(revised_accuracy),             # correct valid trials
+    .groups = "drop"
+  ) %>%
+  bind_cols(
+    binom::binom.wilson(.$k, .$n)[, c("mean", "lower", "upper")]
+  ) %>%
+  rename(mean_acc = mean, ci_low = lower, ci_high = upper) %>%
+  mutate(condition = "control")  %>%
+  mutate(task_level = 0)
+
+sum_tbl_ci <- sum_tbl_ci %>% mutate(condition = "self-referential")
+
+
+##merge both
+sum_plot <- bind_rows(
+  sum_tbl_ci,
+  control_summary
+)
+
+sum_plot$task_level <- factor(
+  sum_plot$task_level,
+  levels = c("Control", "0", "1", "2"),
+  labels = c("Control", "Level 0", "Level 1", "Level 2")
+)
+
+
+
+
+
+
+  
+
+
+
 
 # Build APA table
 
@@ -246,29 +291,40 @@ ggplot(sum_plot,
            width    = .7) +
   geom_errorbar(aes(ymin = ci_low, ymax = ci_high),
                 position = position_dodge(width = .8),
-                width = .2) +
+                width = .1,
+                size = 0.2) +  # ← thinner error bars
   
   # ↓↓↓  sample-size labels BELOW the bars  ↓↓↓
-  geom_text(aes(y = -0.04,             # fixed vertical position
-                label = label_n),
+  geom_text(aes(y = -0.04,
+                label = n),
             position = position_dodge(width = .8),
             vjust = 1, size = 3,
             family = "Times New Roman") +
   
-  scale_fill_grey(start = .3, end = .7, name = "Task Level") +
-  scale_y_continuous(limits = c(-0.10, 1.1), expand = c(0, 0)) +
+  scale_fill_manual(values = c(
+    "Control" = "grey50",     # unsaturated grey
+    "Level 0" = "#91CF60",    # green
+    "Level 1" = "#F7D965",    # yellow
+    "Level 2" = "#0E5E9E"     # blue
+  ),
+  name = "Task Level") +
+  
+  scale_y_continuous(
+    limits = c(-0.10, 1.1),
+    breaks = seq(0, 1, 0.1),  # ← finer gridlines
+    expand = c(0, 0)
+  ) +
   labs(x = "Model",
        y = "Accuracy (Proportion Correct)") +
   theme_apa() +
   theme(
-    plot.margin = margin(t=20, b = 20),
+    plot.margin = margin(t = 20, b = 20),
     legend.position   = "bottom",
     text              = element_text(family = "Times New Roman", size = 12),
     axis.text.x       = element_text(angle = 45, hjust = 1, margin = margin(t = 8)),
     legend.background = element_rect(fill = "white", colour = "black")
   ) +
   coord_cartesian(clip = "off")
-
 
 
 ## Valid trials table
@@ -388,6 +444,15 @@ per_model_drop <- sapply(models, function(m) {
         data_long$task_level == 0
     ], na.rm=T)
 })
+
+
+
+
+
+
+
+
+
 
 
 ##### Output length
