@@ -20,33 +20,32 @@ fs::dir_create(here("outputs", "diagnostics"))
 
 # ── helper: diagnostics & messaging ----------------------------------------
 run_diagnostics <- function(model, name) {
-  cat("
-──────────────── Diagnostic summary ·", name, "────────────────
-")
+  cat("\n──────────────── Diagnostic summary ·", name, "────────────────\n")
   
-  # MerMod-specific check ---------------------------------------------------
-  if (inherits(model, "merMod")) {
-    if (isSingular(model)) cat("• Singular fit (variance ≈ 0)
-")
-  }
+  ## 1  Singularity (merMod only) -------------------------------------------
+  if (inherits(model, "merMod") && isSingular(model))
+    cat("• Singular fit (variance ≈ 0)\n")
   
-  # Over‑dispersion (works for glm & merMod) --------------------------------
+  ## 2  Collinearity (glm & merMod) -----------------------------------------
+  vif_tbl <- performance::check_collinearity(model, quiet = TRUE)
+  max_vif <- max(vif_tbl$VIF, na.rm = TRUE)
+  cat("• Max VIF:", round(max_vif, 2), "\n")
+  
+  ## 3  Dispersion -----------------------------------------------------------
   disp <- performance::check_overdispersion(model)
-  cat("• Dispersion ratio:", round(disp$dispersion_ratio, 2), "
-")
+  cat("• Dispersion ratio:", round(disp$dispersion_ratio, 2), "\n")
   
-  # DHARMa residual simulation ---------------------------------------------
+  ## 4  DHARMa residual tests ------------------------------------------------
   sim <- DHARMa::simulateResiduals(model, plot = FALSE)
-  cat("• DHARMa uniformity p:", DHARMa::testUniformity(sim)$p.value, "
-")
-  cat("• DHARMa dispersion  p:", DHARMa::testDispersion(sim)$p.value,  "
-")
+  cat("• DHARMa uniformity p:", DHARMa::testUniformity(sim)$p.value, "\n")
+  cat("• DHARMa dispersion  p:", DHARMa::testDispersion(sim)$p.value,  "\n")
   
+  ## 5  Save residual plot & tidy table -------------------------------------
   png(here("outputs/diagnostics", paste0(name, "_residuals.png")), 800, 600)
   plot(sim)
   dev.off()
   
-  broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE, exponentiate = FALSE) %>%
+  broom.mixed::tidy(model, effects = "fixed", conf.int = TRUE) %>%
     write_csv(here("outputs", paste0(name, "_tidy.csv")))
 }
 
@@ -126,13 +125,27 @@ run_diagnostics(m_H2b, "H2b_unpooled")
 
 # ── 7  H2c  moderation by model size --------------------------------------
 cat("\n============ H2c  (moderation by model size) ============\n")
-form_H2c <- revised_accuracy ~ task_level_num * log_size + logit_p_z +
+
+# random-intercept only
+form_H2c_int   <- revised_accuracy ~ task_level_num * log_size + logit_p_z +
+  (1 | model) + (1 | item_id)
+
+# random slope for task_level by model
+form_H2c_slope <- revised_accuracy ~ task_level_num * scale(log_size) + logit_p_z +
   (1 + task_level_num | model) + (1 | item_id)
 
-m_H2c <- glmer(form_H2c, data = h2_data, family = binomial,
-               control = glmerControl(optimizer = "bobyqa"))
-summary(m_H2c)
-run_diagnostics(m_H2c, "H2c_pooled")
+m_H2c_int   <- glmer(form_H2c_int,   data = h2_data, family = binomial,
+                     control = glmerControl(optimizer = "bobyqa"))
+m_H2c_slope <- glmer(form_H2c_slope, data = h2_data, family = binomial,
+                     control = glmerControl(optimizer = "bobyqa"))
+
+# model-selection table
+lrt_H2c <- compare_models(m_H2c_int, m_H2c_slope, "H2c_int", "H2c_slope")
+
+# choose better model
+m_H2c_pool <- if (lrt_H2c$p < .05) m_H2c_slope else m_H2c_int
+run_diagnostics(m_H2c_pool, "H2c_pooled")
+
 
 # ── 8  Save model objects ---------------------------------------------------
 model_obj <- list(H1_pooled   = m_H1_pool,
@@ -146,33 +159,6 @@ saveRDS(model_obj, here("outputs", "model_objects.rds"))
 
 cat("\n✓ All models, comparisons, and diagnostics complete.\nResults saved in the /outputs folder.\n")
 
-
-
-# ── 7  H2c  moderation by model size --------------------------------------
-cat("\n============ H2c  (moderation by model size) ============\n")
-
-## random-intercept-only
-form_H2c_int <- revised_accuracy ~ task_level_num * log_size + logit_p_z +
-  (1 | model) + (1 | item_id)
-
-## random slope for task_level_num by model
-form_H2c_slope <- revised_accuracy ~ task_level_num * log_size + logit_p_z +
-  (1 + task_level_num | model) + (1 | item_id)
-
-m_H2c_int   <- glmer(form_H2c_int,   data = h2_data, family = binomial,
-                     control = glmerControl(optimizer = "bobyqa"))
-
-m_H2c_slope <- glmer(form_H2c_slope, data = h2_data, family = binomial,
-                     control = glmerControl(optimizer = "bobyqa"))
-
-## likelihood-ratio test and information criteria
-lrt_H2c <- compare_models(m_H2c_int, m_H2c_slope, "H2c_int", "H2c_slope")
-
-## choose better model
-m_H2c_best <- if (lrt_H2c$p < .05) m_H2c_slope else m_H2c_int
-
-## diagnostics on the chosen model
-run_diagnostics(m_H2c_best, "H2c_pooled")
 
 
 
