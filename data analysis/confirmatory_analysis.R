@@ -18,9 +18,6 @@ library(broom.mixed)   # tidy model summaries
 library(car)           # Anova() type-III
 library(dplyr)
 library(purrr)
-# OPTIONAL:
-# library(simr)        # power via simulation
-# library(segmented)   # break-point models
 
 # Turn 'task_level' into an ordered factor
 # (to request linear / polynomial contrasts without re-coding)
@@ -72,6 +69,7 @@ h1_formula <- revised_accuracy ~ condition_type + scale(input_tokens) + (1 | mod
 h1_formula <- revised_accuracy ~ condition_type +
   scale(input_tokens) +
   (1 + condition_type | model)  # random intercept *and* slope
+# i am using this one
 
 h1_formula <- revised_accuracy ~ condition_type +
   (1 + condition_type | model) 
@@ -81,8 +79,9 @@ m_h1 <- glmer(h1_formula, family = binomial, data = h1_data,
             control = glmerControl(optimizer = "bobyqa"))
 
 summary(m_h1)
-anova(m1, test = "Chisq")           # likelihood-ratio test
-emmeans(m1, pairwise ~ condition_type, adjust = "bonferroni")
+anova(m_h1, test = "Chisq")       
+emmeans(m_h1, ~ condition_type, type = "response")
+emmeans(m_h1, pairwise ~ condition_type, adjust = "bonferroni")
 
 
 
@@ -94,6 +93,8 @@ h1_formula <- revised_accuracy ~ condition_type * model + offset(logit_p)
 
 m_h1_fixed <- glm(h1_formula, family = binomial, data = h1_data)
 summary(m_h1_fixed)
+
+
 
 ## Predicted accuracy (probability scale) for every model × condition
 emm <- emmeans(m_h1_fixed,
@@ -251,8 +252,22 @@ apa_plot <- ggplot(
     text = element_text(family = "Times New Roman", size = 12),
     axis.text.x = element_text(angle = 45, hjust = 1),
     legend.background = element_rect(fill = "white", colour = "black")
-  )
-
+  ) +
+  ## ── grey dashed chance line, left-aligned label ────────────────────────
+  geom_hline(yintercept = 1/14,
+             colour   = "grey40",
+             linetype = "dashed",
+             size     = 0.3) +
+  annotate("text",
+           x       = -Inf,          # left edge of the panel
+           y       = 1/14,
+           label   = "Chance level (self-ref)",
+           colour  = "grey40",
+           hjust   = -0.05,         # nudge a bit rightward into the plot
+           vjust   = -0.3,
+           size    = 3,
+           family  = "Times New Roman") 
+  ## ───────────────────────────────────────────────────────────────────────
 # display
 print(apa_plot)
 
@@ -300,13 +315,7 @@ m_intercept <- glmer(
   control = glmerControl(optimizer = "bobyqa")
 )
 
-# Model 2: Random slopes by model
-m_slope <- glmer(
-  revised_accuracy ~ task_level_num + logit_p + (1 + task_level_num | model) + (1 | trial),
-  family = binomial,
-  data = h2_data,
-  control = glmerControl(optimizer = "bobyqa")
-)
+
 
 summary(m_slope)
 
@@ -330,7 +339,7 @@ summary(m_overall)
 h2_data$input_tokens_z <- scale(h2_data$input_tokens)
 h2_data$logit_p_z <- scale(h2_data$logit_p)
 
-m_overall2 <- glmer(
+m_overall2 <- glmer( 
   revised_accuracy ~ task_level_num + logit_p_z + input_tokens_z +
     (1 + task_level_num | model) +
     (1 | trial),
@@ -339,6 +348,7 @@ m_overall2 <- glmer(
   control = glmerControl(optimizer = "bobyqa")
 )
 
+
 summary(m_overall2)
 
 ##1.3.1 Main GLMM (controlling for input_tokens and item_id instead of trial)
@@ -346,8 +356,8 @@ summary(m_overall2)
 h2_data$input_tokens_z <- scale(h2_data$input_tokens)
 h2_data$logit_p_z <- scale(h2_data$logit_p)
 
-m_overall2 <- glmer(
-  revised_accuracy ~ task_level_num + logit_p_z + # + input_tokens_z
+m_overall2 <- glmer( # this is thefinal model
+  revised_accuracy ~ task_level_num + logit_p_z + input_tokens_z +
     (1 + task_level_num | model) +
     (1 | item_id),
   family = binomial,
@@ -361,7 +371,7 @@ summary(m_overall2)
 
 # Unpooled model with interaction: accuracy ~ task_level * model
 m_H2a_unpooled <- glmer(
-  revised_accuracy ~ task_level * model + logit_p_z +
+  revised_accuracy ~ task_level * model + logit_p_z +  input_tokens_z +
     (1 | item_id),
   family = binomial,
   data   = h2_data,
@@ -370,11 +380,51 @@ m_H2a_unpooled <- glmer(
 
 # Unpooled model with interaction: accuracy ~ task_level * model
 m_H2a_unpooled <- glm(
-  revised_accuracy ~ task_level * model + logit_p_z,
+  revised_accuracy ~ task_level * model + logit_p_z + input_tokens_z,
   family = binomial,
   data   = h2_data
 )
 
+m_H2a_unpooled <- glm(
+  revised_accuracy ~ task_level * model + offset(logit_p_z) + input_tokens_z,
+  family = binomial,
+  data   = h2_data
+)
+m_H2a_unpooled <- glm(
+  revised_accuracy ~ task_level * model + offset(logit_p_z),
+  family = binomial,
+  data   = h2_data
+)
+
+m_H2a_unpooled <- glm(
+  revised_accuracy ~ task_level * model,
+  family = binomial,
+  data   = h2_data
+)
+
+m_H2a_unpooled <- glmer(
+  revised_accuracy ~ task_level * model + input_tokens_z + (1 | item_id),
+  family = binomial,
+  data   = h2_data
+)
+
+install.packages("glmmTMB")
+library(glmmTMB)
+
+m_H2a_unpooled <- glmmTMB(
+  revised_accuracy ~ task_level * model + logit_p_z + input_tokens_z + (1 | item_id),
+  family = binomial,
+  data   = h2_data
+)
+summary(m_H2a_unpooled)
+
+
+m_test <- glm(revised_accuracy ~ task_level * item_id,
+              family = binomial,
+              data   = h2_data
+)
+
+summary(m_test)
 
 library(emmeans)
 
@@ -382,6 +432,20 @@ library(emmeans)
 emm_results <- emmeans(m_H2a_unpooled, ~ model * task_level, type = "response")
 emm_df <- as.data.frame(emm_results)
 
+
+
+library(dplyr)
+grid_off <- h2_data %>%
+  group_by(model, task_level) %>%
+  summarise(offset = mean(logit_p), .groups = "drop")
+
+emm_raw <- emmeans(
+  m_H2a_unpooled,
+  specs  = ~ model * task_level,
+  data   = grid_off,          # supplies model & task_level columns
+  offset = grid_off$offset,   # matching vector of offsets
+  type   = "response"
+)
 
 
 

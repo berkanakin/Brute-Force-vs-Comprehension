@@ -85,6 +85,7 @@ if (inherits(try_slope, "try-error")) {
 }
 run_diagnostics(m_H1_pool, "H1_pooled")
 
+
 # ── 3  H1 unpooled ---------------------------------------------------------
 cat("\n------------ H1  unpooled (condition × model) ------------\n")
 m_H1_unpooled <- glm(revised_accuracy ~ condition_type * model,

@@ -25,7 +25,7 @@ pretty_names <- c(
   gpt_3_5_turbo   = "GPT-3.5 T",
   gpt_4_1         = "GPT-4.1",
   gpt_4o          = "GPT-4o",
-  gpt_o3          = "o3",
+  gpt_o3          = "OpenAI o3",
   grok_3          = "Grok 3",
   llama_3_3       = "Llama 3.3",
   llama_4         = "Llama 4",

@@ -14,6 +14,7 @@
 
 setwd("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/data analysis/preliminary/analysis_data_long")
 
+#This needs to be updated for the github
 
 # ─────────────────────────────────────────────────────────────────────────────
 # 0. Load data ------------------------------------------------------------
@@ -228,5 +229,8 @@ any(is.na(data_long$input_tokens[data_long$condition_type=="experimental"]))
 
 data_long$input_tokens[data_long$condition_type=="experimental"& data_long$model =="claude_4_sonnet"] <- data_long$input_tokens[data_long$condition_type=="experimental"& data_long$model =="grok_3"]
 data_long$input_tokens[data_long$condition_type=="experimental"& data_long$model =="gpt_3_5_turbo"] <- data_long$input_tokens[data_long$condition_type=="experimental"& data_long$model =="grok_3"]
+
+##
+
 
 
