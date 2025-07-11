@@ -221,7 +221,7 @@ h2_data <- h2_data %>%
 ## 5.5  GLM with interaction -----------------------------------------------
 
 #   m_H2c <- glmer(
-#   revised_accuracy ~ task_level_num * cot_length_c +
+#   revised_accuracy ~ task_level_num * cot_length_c + input_tokens_z
 #   (1 + task_level | model) +
 #   (1 | item_id),
 #   family  = binomial,
@@ -234,7 +234,7 @@ h2_data <- h2_data %>%
 # Here, we use raw output_tokens, because simplified GLM contains no model-level random effects
 
 m_H2c <- glm(
-  revised_accuracy ~ task_level_num * output_tokens,
+  revised_accuracy ~ task_level_num * scale(output_tokens) + input_tokens_z,
   data   = h2_data,
   family = binomial
 )
