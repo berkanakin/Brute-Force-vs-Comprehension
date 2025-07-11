@@ -1,8 +1,10 @@
 ##############################################################################
-#  power_H2a.R  ·  Prospective power for Level-0 vs Level-1 (H2a)
+#  power_analyses.R
 #  Author: Berkan Akin · 2025-07-04
 #  Requires: lme4 ≥ 1.1-35, mixedpower (GitHub)
 ##############################################################################
+
+# Prospective power for Level-0 vs Level-1 (H2a)
 
 ## ── 0  packages ────────────────────────────────────────────────────────────
 if (!requireNamespace("lme4",     quietly = TRUE)) install.packages("lme4")
@@ -126,6 +128,40 @@ grid_power <- expand.grid(b0 = baselines, drop = drops_pp) |>
   select(-res)            # drop helper column
 
 print(grid_power)
+
+## Poweranalyses as part of the exploratory analyses
+
+# comparison against chance power analysis (H2b-Level 2)
+
+############################################################
+## Power analysis for a one-sample (exact) binomial test  ##
+## H0: p = 1/14  vs.  H1: p = 0.20  (one-sided, α = .05)  ##
+############################################################
+
+## install & load helper package (for the asymptotic method)
+if (!requireNamespace("pwr", quietly = TRUE)) {
+  install.packages("pwr")
+}
+library(pwr)
+
+## --- Asymptotic (Cohen’s h) solution ---------------------
+p_null <- 1/14          # chance level
+p_alt  <- 0.20          # observed accuracy: =0.20-0.40 
+alpha  <- 0.05          # test size
+target_power <- 0.80    # desired power
+
+# Cohen’s h for proportions
+h <- 2 * asin(sqrt(p_alt)) - 2 * asin(sqrt(p_null))
+
+# Solve for n (one-sample, one-sided)
+ss <- pwr.p.test(h = h,
+                 sig.level = alpha,
+                 power = target_power,
+                 alternative = "greater")
+
+ceiling(ss$n)           # → 37
+
+
 
 
 

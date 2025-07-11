@@ -1,4 +1,4 @@
-df <- read.csv("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/data analysis/preliminary/analysis_data_long/analysis_data_long_with_expected_output.csv")
+df <- read.csv("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/Brute-Force-vs-Comprehension/data collection/analysis_data/analysis_data_long_all_with_output.csv")
 metadata <-read.csv("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/data analysis/preliminary/metadata/llm_itemset_metadata.csv")
 
 df <- read.csv("https://raw.githubusercontent.com/berkanakin/Brute-Force-vs-Comprehension/refs/heads/main/data/analysis_data/analysis_data_long_all_with_output.csv?token=GHSAT0AAAAAADGK6RDI4DXYNNTBSJKYOH322DKLXIA")
@@ -346,6 +346,72 @@ fit <- sem(model, data = df_sem,
 summary(fit, standardized = TRUE, fit.measures = TRUE, rsquare = TRUE)
 
 
+
+### Exploratory inspection of all lvl1 trials
+
+library(dplyr)
+
+successful_outputs <- df %>%
+  filter(valid == TRUE,
+         revised_accuracy == 1,
+         task_level == 1) %>%
+  select(trial, model, model_output)
+
+
+
+### expl inspection of lvl1
+
+library(dplyr)
+
+successful_outputs_dr1 <- df %>%
+  filter(valid == TRUE,
+         revised_accuracy == 1,
+         task_level == 1,
+         model == "deepseek_r1") %>%
+  select(trial, model, model_output)
+
+
+write.csv(successful_outputs, "successful_outputs_lvl1.csv", row.names = FALSE)
+
+setwd("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/data analysis/preliminary/exploratory analysis")
+
+
+successful_outputs <- read.csv("successful_outputs_lvl1_1.csv")
+successful_outputs_dr1$inference <- NA
+successful_outputs_dr1$application <- NA
+
+
+successful_outputs_scored <- rbind(successful_outputs, successful_outputs_dr1)
+
+write.csv(successful_outputs_scored, "successful_outputs_lvl1.csv", row.names = FALSE)
+
+
+successful_outputs_dr1$application[5] <- 0
+successful_outputs_dr1$model_output[5]
+
+
+successful_outputs <- read.csv("successful_outputs_lvl1_1.csv")
+successful_outputs_scored <- rbind(successful_outputs, successful_outputs_dr1)
+
+write.csv(successful_outputs_scored, "successful_outputs_lvl1_scored.csv", row.names = FALSE)
+
+str(successful_outputs_scored)
+
+
+library(dplyr)
+
+inference_application_summary <- successful_outputs_scored %>%
+  group_by(model) %>%
+  summarise(
+    total = n(),
+    correct_inference = sum(inference == 1),
+    correct_application = sum(application == 1),
+    prop_inference = correct_inference / total,
+    prop_application = correct_application / total
+  ) %>%
+  arrange(desc(prop_inference))
+
+print(inference_application_summary)
 
 
 
