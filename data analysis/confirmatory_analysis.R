@@ -71,9 +71,16 @@ h1_formula <- revised_accuracy ~ condition_type +
   (1 + condition_type | model)  # random intercept *and* slope
 # i am using this one
 
+h1_formula <- revised_accuracy ~ condition_type + offset(logit_p) +
+  (1 + condition_type | model) 
+
 h1_formula <- revised_accuracy ~ condition_type +
   (1 + condition_type | model) 
 
+
+anova(m_h1_simple, m_h1)
+
+lme4::isSingular(m_h1, tol = 1e-4)
 
 m_h1 <- glmer(h1_formula, family = binomial, data = h1_data,
             control = glmerControl(optimizer = "bobyqa"))
@@ -89,7 +96,7 @@ emmeans(m_h1, pairwise ~ condition_type, adjust = "bonferroni")
 
 h1_formula <- revised_accuracy ~ condition_type * model
 #or even
-h1_formula <- revised_accuracy ~ condition_type * model + offset(logit_p)
+h1_formula <- revised_accuracy ~ condition_type * model + input_tokens_z
 
 m_h1_fixed <- glm(h1_formula, family = binomial, data = h1_data)
 summary(m_h1_fixed)
@@ -857,7 +864,7 @@ h2_data <- h2_data %>%
   left_join(llm_cost_total, by = "model")
 
 
-m_H2b <- glmer(
+m_H2 <- glmer(
   revised_accuracy ~ task_level_num*log_size + logit_p_z + # input_tokens_z +
     (1 + task_level_num | model) +
     (1 | item_id),

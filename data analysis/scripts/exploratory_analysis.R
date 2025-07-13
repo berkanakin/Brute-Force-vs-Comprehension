@@ -215,7 +215,7 @@ h2_data <- h2_data %>%
 ## 5.4  Group‑mean‑centred CoT length ---------------------------------------
 h2_data <- h2_data %>%
   group_by(model) %>%
-  mutate(cot_length_c = output_tokens - mean(output_tokens, na.rm = TRUE)) %>%
+  mutate(cot_length_c = output_tokens - mean(output_tokens, na<.rm = TRUE)) %>%
   ungroup()
 
 ## 5.5  GLM with interaction -----------------------------------------------

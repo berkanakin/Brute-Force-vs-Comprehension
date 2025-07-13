@@ -51,6 +51,7 @@ form_H1_pool <- revised_accuracy ~ condition_type + (1 + condition_type | model)
 m_H1_pool <- glmer(form_H1_pool, data = h1_data, family = binomial,
                    control = glmerControl(optimizer = "bobyqa"))
 
+summary(m_H1_pool)
 # Fixed effects
 fixef_H1_pool <- broom.mixed::tidy(m_H1_pool, effects = "fixed", conf.int = TRUE)
 write_csv(fixef_H1_pool, here("outputs/results", "H1_model1_fixed.csv"))
@@ -79,13 +80,12 @@ write_csv(as.data.frame(emm_H1_contrasts_by_model),
 # =====================================================================
 
 ## ---------------- Model 3 : Pooled GLMM ------------------------------
-form_H2_pool <- revised_accuracy ~ task_level_num + logit_p + input_tokens_z + # without offset term: +logit_p
+form_H2_pool <- revised_accuracy ~ task_level_num + logit_p + input_tokens_z + 
   (1 + task_level_num | model) + (1 | item_id) 
-form_H2_pool <- revised_accuracy ~ task_level + logit_p + input_tokens_z + # without offset term: +logit_p
-  (1 + task_level | model) + (1 | item_id) 
 
 m_H2_pool <- glmer(form_H2_pool, data = h2_data, family = binomial,
                    control = glmerControl(optimizer = "bobyqa"))
+
 
 # Fixed effects
 fixef_H2_pool <- broom.mixed::tidy(m_H2_pool, effects = "fixed", conf.int = TRUE)
@@ -182,7 +182,19 @@ bf_tbl <- h2_data %>%
     BF_collapse = (post_prob_collapse / (1 - post_prob_collapse)) *
       ((1 - chance) / chance),                         # divide by prior odds
     BF_above    = 1 / BF_collapse,
-    collapsed   = BF_collapse > 3                                  # evidence threshold
+    collapsed   = BF_collapse > 3,
+    evidence_collapse = case_when(
+      BF_collapse >= 100          ~ "extreme",
+      BF_collapse >= 30           ~ "very strong",
+      BF_collapse >= 10           ~ "strong",
+      BF_collapse >= 3            ~ "moderate",
+      BF_collapse >= 1            ~ "anecdotal",
+      BF_collapse >= 1/3          ~ "anecdotal (above)",
+      BF_collapse >= 1/10         ~ "moderate (above)",
+      BF_collapse >= 1/30         ~ "strong (above)",
+      TRUE                        ~ "very strong / extreme (above)"
+    )# evidence threshold
+    
   )
 
 print(bf_tbl)
@@ -218,6 +230,50 @@ contrast_H2c <- contrast(emm_H2c_levels, method = "pairwise", by = "log_size_sd"
                          adjust = "bonferroni")
 write_csv(as.data.frame(contrast_H2c),
           here("outputs/results", "H2_model5_pairwise.csv"))
+
+
+# =====================================================================
+#  Fixed Effects Table 
+# =====================================================================
+
+library(lme4)
+library(broom.mixed)
+library(dplyr)
+library(purrr)
+
+# Wald critical value for a 95 % CI
+crit <- qnorm(.975)          # = 1.96
+
+add_ci <- function(df) {
+  df %>%
+    mutate(
+      LL = estimate - crit * std.error,
+      UL = estimate + crit * std.error
+    )
+}
+
+mod_list <- list(
+  "Model 1" = m_H1_pool,
+  "Model 3" = m_H2_pool,
+  "Model 5" = m_H2c
+)
+
+fixed_effects_table <- map_dfr(
+  mod_list,
+  ~ tidy(.x, effects = "fixed", conf.int = FALSE) %>% 
+    select(effect = term,
+           estimate,
+           std.error,
+           wald_z = statistic,   # keep the original z-statistic
+           p.value) %>% 
+    add_ci(),
+  .id = "model"
+) %>% 
+  relocate(model, .before = effect)
+
+# look at it
+print(fixed_effects_table, width = Inf)
+
 
 # =====================================================================
 #  Console report (quick glance)

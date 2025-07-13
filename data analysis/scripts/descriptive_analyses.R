@@ -57,6 +57,8 @@ exp_summary <- data_long %>%
   bind_cols(wilson_ci(k = .$k, n = .$n)) %>%
   mutate(condition = "experimental")
 
+exp_summary[exp_summary$task_level==1,]
+
 # Control trials -------------------------------------------------------------
 control_summary <- data_long %>%
   filter(valid, condition_type == "control") %>%
@@ -86,8 +88,70 @@ per_model_drop <- data_long %>%
 cat("\n--- Per‑model drop (Control ‑ SR‑L0) ---\n")
 print(per_model_drop, n = Inf)
 
+#
 
-# 2.1. Per‑model absolute drop:  SR‑L0 → SR‑L0-------------------------------
+## -----------------------------------------------------------
+##  H1  •  Control  vs  Self-referential Level-0  (per model)
+## -----------------------------------------------------------
+library(dplyr)
+library(tidyr)
+library(PropCIs)
+
+per_model_drop <- data_long %>%
+  ## keep only the two conditions we need
+  filter(
+    valid,
+    condition_type == "control" |
+      (condition_type == "experimental" & task_level == 0)
+  ) %>%
+  ## tag rows so we can pivot later
+  mutate(cond_key = ifelse(condition_type == "control", "control", "sr_l0")) %>%
+  
+  ## ── counts per model × condition ─────────────────────────
+  group_by(model, cond_key) %>%
+  summarise(
+    n       = n(),
+    correct = sum(revised_accuracy),
+    .groups = "drop"
+  ) %>%
+  
+  ## ── wide format: n_control, correct_sr_l0, … ────────────
+  pivot_wider(
+    names_from  = cond_key,
+    names_glue  = "{.value}_{cond_key}",
+    values_from = c(n, correct)
+  ) %>%
+  
+  ## ── proportions & absolute drop ──────────────────────────
+  mutate(
+    prop_control = correct_control / n_control,
+    prop_sr_l0   = correct_sr_l0   / n_sr_l0,
+    abs_drop     = prop_control - prop_sr_l0          # ≥ 0 means SR-L0 is worse
+  ) %>%
+  
+  ## ── 95 % CI for the difference in proportions ───────────
+  rowwise() %>%
+  mutate(
+    ci = list(
+      PropCIs::diffscoreci(
+        correct_control, n_control,
+        correct_sr_l0,  n_sr_l0,
+        conf.level = 0.95
+      )
+    ),
+    lower_delta = ci$conf.int[1],
+    upper_delta = ci$conf.int[2]
+  ) %>%
+  ungroup() %>%
+  select(-ci) %>%                       # drop the list column
+  arrange(model)
+
+cat("\n--- Per-model drop (Control – SR-L0) with 95 % CIs ---\n")
+print(per_model_drop, n = Inf)
+
+
+
+# 2.1. Per‑model absolute drop:  SR‑L0 → SR‑L1-------------------------------
 
 acc_drop <- h2_data %>%
   filter(valid, task_level %in% c("0", "1")) %>%          # Levels 0 & 1 only
