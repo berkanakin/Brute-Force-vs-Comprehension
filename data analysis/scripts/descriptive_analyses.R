@@ -71,6 +71,9 @@ control_summary <- data_long %>%
 summary_tbl <- bind_rows(exp_summary, control_summary) %>%
   arrange(model, condition, task_level)
 
+setwd("/Users/berkanakin/Library/CloudStorage/OneDrive-Personal/Studium/Master/UvA Psychology (research) Master/Courses/Thesis/data analysis/preliminary")
+write.csv(summary_tbl, "raw_accuracy.csv")
+
 print("--- Accuracy summary (Wilson 95% CI) ---")
 print(summary_tbl, n = Inf)
 

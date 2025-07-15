@@ -148,22 +148,9 @@ fit_sem <- sem(
   estimator = "WLSMV"
 )
 
-#---------------------------------------------------------------------------
-# Question 2 – Do LLMs recover at Level 2? (Continuation of H2a)
-#---------------------------------------------------------------------------
-
-df_lvl2 <- filter(df, task_level == 2)
-
-# Print reasoning chains for all *correct* Level‑2 trials for manual review
-# Redirect to a log file if you prefer: sink("lvl2_correct.txt"); …; sink()
-df_lvl2 |>
-  filter(revised_accuracy == 1) |>
-  select(model, item_id.y, model_output) |>
-  arrange(model) |>
-  print(n = Inf)
 
 #---------------------------------------------------------------------------
-# Question 3 – Have the “edge‑case” models collapsed at Level 1? (H2b)
+# Question 2 – Have the “edge‑case” models collapsed at Level 1? (H2b)
 #---------------------------------------------------------------------------
 
 edge_cases <- read_csv("successful_outputs_lvl1_scored.csv",
@@ -171,6 +158,20 @@ edge_cases <- read_csv("successful_outputs_lvl1_scored.csv",
 
 edge_cases |>
   select(model, item_id, rule_inference, rule_application, model_output) |>
+  arrange(model) |>
+  print(n = Inf)
+
+#---------------------------------------------------------------------------
+# Question 3 – Do LLMs recover at Level 2? (Continuation of H2b)
+#---------------------------------------------------------------------------
+
+df_lvl2 <- filter(df, task_level == 2)
+
+# Print reasoning chains for all *correct* Level‑2 trials for manual review
+
+df_lvl2 |>
+  filter(revised_accuracy == 1) |>
+  select(model, item_id.y, model_output) |>
   arrange(model) |>
   print(n = Inf)
 
